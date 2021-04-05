@@ -205,12 +205,28 @@ export default class BluetoothTerminal {
     data += this._sendSeparator;
 
     // Split data to chunks by max characteristic value length.
-    const chunks = (this.constructor as typeof BluetoothTerminal)._splitByLength(data,
-      this._maxCharacteristicValueLength);
+    const encodedData = new TextEncoder().encode(data)
+    return this.sendRaw(encodedData);
+  }
 
+  /**
+   * Send data to the connected device.
+   *
+   * @param {string} data - Data.
+   * @returns {Promise} Promise which will be fulfilled when data will be sent or rejected if something went wrong.
+   */
+  public sendRaw(data: Uint8Array): Promise<void> {
     // Return rejected promise immediately if there is no connected device.
     if (!this._characteristic) {
       return Promise.reject(new Error('There is no connected device'));
+    }
+
+    let nrChunks = Math.ceil(data.length / this._maxCharacteristicValueLength);
+    const chunks:Uint8Array[] = [];
+    for (let i = 0; i < nrChunks; i++) {
+      let byteOffset = i * this._maxCharacteristicValueLength;
+      let length = Math.min(data.length, byteOffset + this._maxCharacteristicValueLength);
+      chunks.push(data.slice(byteOffset, length));
     }
 
     // Write first chunk to the characteristic immediately.
@@ -450,12 +466,12 @@ export default class BluetoothTerminal {
    * Write to characteristic.
    *
    * @param {Object} characteristic - Characteristic.
-   * @param {string} data - Data.
+   * @param {BufferSource} chunk - Raw data.
    * @returns {Promise} Promise.
    * @private
    */
-  public _writeToCharacteristic(characteristic: BluetoothRemoteGATTCharacteristic, data: string): Promise<void> {
-    return characteristic.writeValue(new TextEncoder().encode(data));
+  public _writeToCharacteristic(characteristic: BluetoothRemoteGATTCharacteristic, chunk: BufferSource): Promise<void> {
+    return characteristic.writeValue(chunk);
   }
 
   /**
@@ -468,21 +484,4 @@ export default class BluetoothTerminal {
     console.log(...messages); // eslint-disable-line no-console
   }
 
-  /**
-   * Split by length.
-   *
-   * @param {string} string - String.
-   * @param {number} length - Length.
-   * @returns {Array} Array.
-   * @private
-   */
-  public static _splitByLength(string: string, length: number): string[] {
-    const matches = string.match(new RegExp('(.|[\r\n]){1,' + length + '}', 'g'));
-
-    if (!matches) {
-      return [];
-    }
-
-    return matches;
-  }
 }

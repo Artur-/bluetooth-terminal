@@ -364,15 +364,17 @@ export default class BluetoothTerminal {
    * @returns {Promise} Promise.
    * @private
    */
-  public _startNotifications(characteristic: BluetoothRemoteGATTCharacteristic): Promise<void> {
+  public async _startNotifications(characteristic: BluetoothRemoteGATTCharacteristic): Promise<void> {
+    if (!characteristic.properties.notify) {
+      this._log('Device does not support notifications');
+      return;
+    }
     this._log('Starting notifications...');
 
-    return characteristic.startNotifications().
-      then(() => {
-        this._log('Notifications started');
+    await characteristic.startNotifications();
+    this._log('Notifications started');
 
-        characteristic.addEventListener('characteristicvaluechanged', this._boundHandleCharacteristicValueChanged);
-      });
+    characteristic.addEventListener('characteristicvaluechanged', this._boundHandleCharacteristicValueChanged);
   }
 
   /**
@@ -382,15 +384,17 @@ export default class BluetoothTerminal {
    * @returns {Promise} Promise.
    * @private
    */
-  public _stopNotifications(characteristic: BluetoothRemoteGATTCharacteristic): Promise<void> {
+  public async _stopNotifications(characteristic: BluetoothRemoteGATTCharacteristic): Promise<void> {
+    if (!characteristic.properties.notify) {
+      return;
+    }
+
     this._log('Stopping notifications...');
 
-    return characteristic.stopNotifications().
-      then(() => {
-        this._log('Notifications stopped');
+    await characteristic.stopNotifications();
+    this._log('Notifications stopped');
 
-        characteristic.removeEventListener('characteristicvaluechanged', this._boundHandleCharacteristicValueChanged);
-      });
+    characteristic.removeEventListener('characteristicvaluechanged', this._boundHandleCharacteristicValueChanged);
   }
 
   /**
